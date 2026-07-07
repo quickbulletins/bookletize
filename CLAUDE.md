@@ -24,9 +24,10 @@ promise — close out-of-scope issues kindly, don't implement them.
   surface (`imposeSaddle`, `applySaddle`, CLI flags), never the reverse.
 - **Zero-dep core.** `src/impose.ts` imports nothing, ever. PDF concerns stay
   in `src/pdf.ts` behind the `bookletize/pdf` subpath.
-- **Print contract:** duplex output assumes FLIP ON SHORT EDGE (PRINTING.md).
-  Any NEW sheet layout must pass a physical fold test on real printers before
-  it ships in a release — arithmetic that hasn't touched paper isn't done.
+- **Print contract:** duplex output assumes FLIP ON SHORT EDGE — except 2-up
+  stacked output, which flips on the LONG edge (PRINTING.md). Any NEW sheet
+  layout must pass a physical fold test on real printers before it ships in
+  a release — arithmetic that hasn't touched paper isn't done.
 - Commit author is the repo-local noreply config (already set); keep it.
 
 ## Release flow
