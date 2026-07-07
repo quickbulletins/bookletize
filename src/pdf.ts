@@ -4,7 +4,16 @@
  * finished size) and emits a new PDF of printer-sheet faces, front/back
  * alternating, ready for duplex printing with FLIP ON SHORT EDGE.
  */
-import { PDFDocument, PDFPage, rgb } from "@cantoo/pdf-lib";
+import {
+  PDFDocument,
+  PDFPage,
+  clip,
+  endPath,
+  popGraphicsState,
+  pushGraphicsState,
+  rectangle,
+  rgb,
+} from "@cantoo/pdf-lib";
 import type { PDFEmbeddedPage } from "@cantoo/pdf-lib";
 import { imposeSaddle, imposeTrifold } from "./impose.js";
 import type { SlotPage } from "./impose.js";
@@ -24,6 +33,17 @@ export const SHEETS = {
 
 export interface SaddleOptions {
   foldGuides?: boolean;
+  /** Bleed on each side of every logical page, in PDF points. Enables the
+   *  trim workflow: pages place at scale 1 and must fit their slot. */
+  bleed?: number;
+  /** Draw crop marks at the trim corners (implies the trim workflow; bleed
+   *  defaults to 0 = marks-only). */
+  cropMarks?: boolean;
+}
+
+interface BleedMode {
+  bleed: number;
+  cropMarks: boolean;
 }
 
 export const TRIFOLD_LETTER = {
@@ -33,6 +53,7 @@ export const TRIFOLD_LETTER = {
 } as const;
 
 const GUIDE_COLOR = rgb(0.62, 0.62, 0.62);
+const MARK_COLOR = rgb(0, 0, 0);
 
 /**
  * Embed the logical pages into `out`, index-aligned with the source.
@@ -193,6 +214,7 @@ function drawFace(
   embedded: Array<PDFEmbeddedPage | null>,
   slots: SlotPage[],
   slotWidths: number[],
+  bleedMode?: BleedMode,
 ): PDFPage {
   const face = doc.addPage([sheet.width, sheet.height]);
   let x = 0;
@@ -207,13 +229,33 @@ function drawFace(
         x += slotW;
         return; // contentless source page: render as a blank slot
       }
-      const { scale, dx, dy } = fitSlot(slotW, sheet.height, ep.width, ep.height);
-      face.drawPage(ep, {
-        x: x + dx,
-        y: dy,
-        xScale: scale,
-        yScale: scale,
-      });
+      if (bleedMode) {
+        const { dx, dy, marks } = bleedLayout(slotW, sheet.height, ep.width, ep.height, bleedMode.bleed);
+        face.pushOperators(pushGraphicsState(), rectangle(x, 0, slotW, sheet.height), clip(), endPath());
+        face.drawPage(ep, { x: x + dx, y: dy });
+        face.pushOperators(popGraphicsState());
+        // Marks draw OUTSIDE the slot clip on purpose: they live in the slot
+        // margins the clip would erase. A mark touching the slot boundary may
+        // straddle the fold by half its 0.4pt stroke — folded, never seen flat.
+        if (bleedMode.cropMarks) {
+          for (const m of marks) {
+            face.drawLine({
+              start: { x: x + m.x1, y: m.y1 },
+              end: { x: x + m.x2, y: m.y2 },
+              thickness: 0.4,
+              color: MARK_COLOR,
+            });
+          }
+        }
+      } else {
+        const { scale, dx, dy } = fitSlot(slotW, sheet.height, ep.width, ep.height);
+        face.drawPage(ep, {
+          x: x + dx,
+          y: dy,
+          xScale: scale,
+          yScale: scale,
+        });
+      }
     }
     x += slotW;
   });
@@ -229,10 +271,14 @@ export async function imposeSaddlePdf(
   const out = await PDFDocument.create();
   const embedded = await embedLogical(out, logical);
   const slotWidths = [sheet.width / 2, sheet.width / 2];
+  const bleedMode: BleedMode | undefined =
+    opts.bleed !== undefined || opts.cropMarks === true
+      ? { bleed: opts.bleed ?? 0, cropMarks: opts.cropMarks === true }
+      : undefined;
 
   for (const { front, back } of mapping) {
     for (const slots of [front, back]) {
-      const face = drawFace(out, sheet, embedded, slots, slotWidths);
+      const face = drawFace(out, sheet, embedded, slots, slotWidths, bleedMode);
       if (opts.foldGuides !== false) drawFoldGuide(face, sheet.width / 2, sheet.height);
     }
   }
@@ -283,6 +329,8 @@ export async function applySaddle(
   const logical = await PDFDocument.load(pdf);
   const out = await imposeSaddlePdf(logical, resolveSheet(opts.sheet ?? "letter-landscape"), {
     foldGuides: opts.foldGuides,
+    bleed: opts.bleed,
+    cropMarks: opts.cropMarks,
   });
   return out.save();
 }

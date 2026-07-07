@@ -1,4 +1,4 @@
-import { PDFDocument } from "@cantoo/pdf-lib";
+import { PDFArray, PDFDocument, PDFRawStream, decodePDFRawStream } from "@cantoo/pdf-lib";
 import { describe, expect, test } from "vitest";
 import { SHEETS, TRIFOLD_LETTER, bleedLayout, fitSlot, imposeSaddlePdf, imposeTrifoldPdf } from "../src/pdf.js";
 
@@ -10,6 +10,20 @@ async function makeLogical(n: number, w: number, h: number): Promise<PDFDocument
     page.drawRectangle({ x: 10, y: 10, width: 20, height: 20 });
   }
   return doc;
+}
+
+/** Decode a saved face's content-stream operators as text (Contents is a PDFArray of stream refs). */
+async function faceOperators(doc: PDFDocument, faceIndex: number): Promise<string> {
+  const reloaded = await PDFDocument.load(await doc.save());
+  const contents = reloaded.getPage(faceIndex).node.Contents();
+  const parts: string[] = [];
+  if (contents instanceof PDFArray) {
+    for (let i = 0; i < contents.size(); i++) {
+      const stream = reloaded.context.lookup(contents.get(i)) as PDFRawStream;
+      parts.push(Buffer.from(decodePDFRawStream(stream).decode()).toString("latin1"));
+    }
+  }
+  return parts.join("\n");
 }
 
 describe("imposeSaddlePdf", () => {
@@ -197,5 +211,40 @@ describe("bleedLayout", () => {
   test("negative or non-finite bleed throws", () => {
     expect(() => bleedLayout(612, 792, 414, 630, -1)).toThrow(/bleed/);
     expect(() => bleedLayout(612, 792, 414, 630, Number.NaN)).toThrow(/bleed/);
+  });
+});
+
+describe("imposeSaddlePdf bleed mode", () => {
+  test("half-letter + 9pt bleed on tabloid-landscape: 4 faces, slot clips, crop marks", async () => {
+    const logical = await makeLogical(8, 414, 630);
+    const out = await imposeSaddlePdf(logical, SHEETS.tabloidLandscape, { bleed: 9, cropMarks: true });
+    expect(out.getPageCount()).toBe(4);
+    const { width, height } = out.getPage(0).getSize();
+    expect(width).toBeCloseTo(1224);
+    expect(height).toBeCloseTo(792);
+    const ops = await faceOperators(out, 0);
+    expect(ops).toMatch(/re\nW\nn/); // slot clip is active
+    expect(ops).toContain("81 90 m"); // left slot's bottom-left horizontal mark...
+    expect(ops).toContain("99 90 l"); // ...drawn from (81,90) to (99,90)
+  });
+
+  test("cropMarks: false still clips but draws no marks", async () => {
+    const logical = await makeLogical(4, 414, 630);
+    const out = await imposeSaddlePdf(logical, SHEETS.tabloidLandscape, { bleed: 9 });
+    const ops = await faceOperators(out, 0);
+    expect(ops).toMatch(/re\nW\nn/);
+    expect(ops).not.toContain("81 90 m");
+  });
+
+  test("normal mode emits no clip and is unchanged", async () => {
+    const logical = await makeLogical(4, 396, 612);
+    const out = await imposeSaddlePdf(logical, SHEETS.letterLandscape);
+    const ops = await faceOperators(out, 0);
+    expect(ops).not.toMatch(/re\nW\nn/);
+  });
+
+  test("stock too small for trim + bleed rejects (A5+bleed needs A3, not A4)", async () => {
+    const logical = await makeLogical(4, 437.53, 613.28);
+    await expect(imposeSaddlePdf(logical, SHEETS.a4Landscape, { bleed: 9 })).rejects.toThrow(/larger stock/);
   });
 });
