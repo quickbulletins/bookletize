@@ -11,7 +11,7 @@ promise — close out-of-scope issues kindly, don't implement them.
 
 ## Commands
 
-- `npm test` — vitest (25 golden + API tests)
+- `npm test` — vitest (golden + API tests)
 - `npm run typecheck` — tsc, no emit
 - `npm run build` — tsup, dual ESM/CJS + dts
 - If a pnpm wrapper misbehaves on this machine, call `./node_modules/.bin/*` directly.
