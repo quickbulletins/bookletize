@@ -30,6 +30,13 @@ describe("applySaddle", () => {
     expect(doc.getPage(0).getSize().width).toBeCloseTo(1008);
   });
 
+  test('accepts "a4-landscape" (A5 booklets)', async () => {
+    const input = await makeLogicalBytes(4, 419.53, 595.28);
+    const out = await applySaddle(input, { sheet: "a4-landscape" });
+    const doc = await PDFDocument.load(out);
+    expect(doc.getPage(0).getSize().width).toBeCloseTo(841.89);
+  });
+
   test("accepts a custom SheetSpec", async () => {
     const input = await makeLogicalBytes(4, 396, 612);
     const out = await applySaddle(input, { sheet: { width: 842, height: 595 } }); // A4 landscape

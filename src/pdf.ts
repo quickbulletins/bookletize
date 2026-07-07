@@ -17,6 +17,8 @@ export interface SheetSpec {
 export const SHEETS = {
   letterLandscape: { width: 792, height: 612 },
   legalLandscape: { width: 1008, height: 612 },
+  a4Landscape: { width: 841.89, height: 595.28 },
+  a3Landscape: { width: 1190.55, height: 841.89 },
 } as const satisfies Record<string, SheetSpec>;
 
 export interface SaddleOptions {
@@ -152,11 +154,13 @@ export async function imposeSaddlePdf(
 // ------------------------------------------------------------ bytes API
 
 /** The named sheets `applySaddle` accepts; use a SheetSpec for anything else. */
-export type SheetName = "letter-landscape" | "legal-landscape";
+export type SheetName = "letter-landscape" | "legal-landscape" | "a4-landscape" | "a3-landscape";
 
 const SHEET_BY_NAME: Record<SheetName, SheetSpec> = {
   "letter-landscape": SHEETS.letterLandscape,
   "legal-landscape": SHEETS.legalLandscape,
+  "a4-landscape": SHEETS.a4Landscape,
+  "a3-landscape": SHEETS.a3Landscape,
 };
 
 function resolveSheet(sheet: SheetName | SheetSpec): SheetSpec {

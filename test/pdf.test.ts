@@ -31,6 +31,24 @@ describe("imposeSaddlePdf", () => {
     expect(height).toBeCloseTo(612);
   });
 
+  test("8 A5 pages -> 4 a4-landscape faces", async () => {
+    const logical = await makeLogical(8, 419.53, 595.28);
+    const out = await imposeSaddlePdf(logical, SHEETS.a4Landscape);
+    expect(out.getPageCount()).toBe(4);
+    const { width, height } = out.getPage(0).getSize();
+    expect(width).toBeCloseTo(841.89);
+    expect(height).toBeCloseTo(595.28);
+  });
+
+  test("8 A4 pages -> 4 a3-landscape faces", async () => {
+    const logical = await makeLogical(8, 595.28, 841.89);
+    const out = await imposeSaddlePdf(logical, SHEETS.a3Landscape);
+    expect(out.getPageCount()).toBe(4);
+    const { width, height } = out.getPage(0).getSize();
+    expect(width).toBeCloseTo(1190.55);
+    expect(height).toBeCloseTo(841.89);
+  });
+
   test("6 pages pad to 8: still 4 faces, blank slots render without error", async () => {
     const logical = await makeLogical(6, 396, 612);
     const out = await imposeSaddlePdf(logical, SHEETS.letterLandscape);
