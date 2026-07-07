@@ -14,7 +14,8 @@ gates. The README keeps a four-line summary; CLAUDE.md points here.
   test on real duplex printers before it ships in a release. Code may merge
   earlier; the *release* is what blocks. Arithmetic that hasn't touched
   paper isn't done (see PRINTING.md).
-- Duplex output assumes **flip on short edge**, everywhere, always.
+- Duplex output assumes **flip on short edge** — with one exception: 2-up
+  stacked output flips on the **long** edge (see PRINTING.md).
 
 ## v0.1 — shipped (2026-07)
 
@@ -38,7 +39,14 @@ Build order (each lands red-green; ⚠ marks a paper gate):
    trim+2·bleed place at scale 1 on oversized stock (`tabloid-landscape`,
    `a3-landscape`), clipped to their slots, black hairline marks at the
    trim corners. No new fold pattern.
-3. **2-up** — new pure mapping in `src/impose.ts` + golden tests.
+3. **2-up** *(landed 2026-07)* — step-and-repeat: two identical copies of
+   each face stacked on a derived double-height sheet (letter → tabloid
+   portrait); cut once at the midline for two booklet stacks. Applier-side
+   post-process (`imposeTwoUpPdf`) — the page order is unchanged, so no
+   new mapping exists in `src/impose.ts` (the original roadmap wording
+   guessed otherwise). ⚠ paper gate: new physical layout AND the
+   library's first long-edge duplex — verify on a real printer before
+   0.2.0 tags.
 4. **Cut-and-stack** — new pure mapping + golden tests. ⚠ physical fold
    test before 0.2.0 tags.
 5. **Creep/shingling compensation** — progressive spine offset in the
@@ -46,6 +54,10 @@ Build order (each lands red-green; ⚠ marks a paper gate):
    before it ships enabled.
 6. **Printer-quirks doc** — public field notes extending PRINTING.md
    (driver flip settings, margin clipping, scaling traps).
+
+Pre-0.2.0-tag checklist: spot-check A4 stock (item 1); 2-up duplex test
+with FLIP ON LONG EDGE on a real printer (item 3); cut-and-stack fold
+test (item 4, when it lands). Append here as further ⚠-gated items land.
 
 ## v0.3
 

@@ -45,7 +45,8 @@ npx bookletize trifold flyer.pdf -o trifold.pdf
 
 Options: `--sheet letter-landscape|legal-landscape|a4-landscape|a3-landscape|tabloid-landscape`
 (booklet), `--bleed <points>` + `--crop-marks` (booklet trim workflow — print on oversized
-stock, cut at the marks), `--no-guides`, `-o/--out` (defaults to `<input>.<command>.pdf`).
+stock, cut at the marks), `--two-up` (stack two copies per sheet — flips on LONG edge),
+`--no-guides`, `-o/--out` (defaults to `<input>.<command>.pdf`).
 
 Then print **duplex, "flip on short edge"** for booklets. (This one printer-dialog setting
 causes more upside-down back pages than everything else combined — see
@@ -69,18 +70,20 @@ const sheets = imposeSaddle(5);
 import { applySaddle } from "bookletize/pdf";
 
 // Real PDFs in, imposed sheet faces out (Uint8Array).
-// bleed/cropMarks below are the trim workflow — omit both for a plain booklet.
+// bleed/cropMarks are the trim workflow, twoUp is step-and-repeat — three
+// independent options; omit all three for a plain booklet.
 const bytes = await applySaddle(pdfBytes, {
   sheet: "letter-landscape",   // or "legal-landscape" | "a4-landscape" | "a3-landscape", or { width, height } in points
   foldGuides: true,            // dashed tick marks on the spine (default true)
   bleed: 9,                    // pages arrive at trim+bleed; scale locks to 1 (optional)
   cropMarks: true,             // black hairlines at the trim corners (optional)
+  twoUp: true,                 // stack two copies per sheet — flips on LONG edge (optional)
 });
 ```
 
-Lower-level entry points (`imposeSaddlePdf`, `imposeTrifoldPdf`, `fitSlot`,
-`bleedLayout`, `SHEETS`, `TRIFOLD_LETTER`) are exported from `bookletize/pdf`
-for callers who already hold a `PDFDocument`.
+Lower-level entry points (`imposeSaddlePdf`, `imposeTrifoldPdf`, `imposeTwoUpPdf`,
+`fitSlot`, `bleedLayout`, `SHEETS`, `TRIFOLD_LETTER`) are exported from
+`bookletize/pdf` for callers who already hold a `PDFDocument`.
 
 ## What it does / doesn't do
 
@@ -88,8 +91,8 @@ for callers who already hold a `PDFDocument`.
 |---|---|
 | Saddle-fold booklets (half-letter, half-legal, A5, A4) | Render or lay out your content |
 | Tri-folds with correct narrow-flap allowance | Edit PDF content |
-| Fold guides, crop marks + bleed, blank padding, page-slot math | Compress, encrypt, or sign PDFs |
-| (v0.2) creep compensation, cut-and-stack, 2-up | Anything that isn't imposition |
+| Fold guides, crop marks + bleed, 2-up, blank padding, page-slot math | Compress, encrypt, or sign PDFs |
+| (v0.2) creep compensation, cut-and-stack | Anything that isn't imposition |
 
 That last row is a promise: **scope is imposition only.** Issues asking for rendering or
 layout features will be closed kindly. This keeps the library small enough to trust and small
@@ -106,7 +109,7 @@ or school booklets: it's the same arithmetic. Enjoy.
 ## Roadmap
 
 - **0.1** — saddle + tri-fold (letter/legal), CLI, fold guides ← *you are here*
-- **0.2** — A4/A5 *(landed)*, crop marks + bleed *(landed)*, cut-and-stack, 2-up, creep/shingling compensation
+- **0.2** — A4/A5 *(landed)*, crop marks + bleed *(landed)*, 2-up *(landed)*, cut-and-stack, creep/shingling compensation
 - **0.3** — browser build + a free in-browser [Booklet this PDF](https://quickbulletins.app/booklet?utm_source=bookletize) tool (your PDF never leaves your machine)
 - **1.0** — API freeze, semver promise
 

@@ -5,7 +5,7 @@ back of sheet 1, front of sheet 2, back of sheet 2, … Your printer's job is to
 put each "back" face on the reverse of its "front" face, oriented so nothing
 comes out upside down. Three settings do all the work:
 
-(Printing with bleed? See **Trim workflow** at the end of this file.)
+(Printing with bleed, or 2-up? See **Trim workflow** and **2-up** at the end of this file.)
 
 ## 1. Duplex: flip on SHORT edge
 
@@ -62,3 +62,14 @@ marks on purpose — it is folded, never cut. Fold guides and crop marks
 coexist: the grey dashed spine ticks sit in the top/bottom waste and help
 register the fold before the cut. If bookletize says the sheet is too small
 for trim + bleed, it means exactly that: pick larger stock.
+
+## 2-up (step-and-repeat) — the one LONG-edge exception
+
+`--two-up` stacks two identical copies of every sheet face on double-height
+stock (letter booklets → 11×17 fed portrait). **This output flips on the
+LONG edge** — the only bookletize output that does. Everything on this page
+about short-edge flipping applies to normal output; for 2-up jobs, set
+duplex to "flip on long edge", print, cut the whole stack once at the
+dashed midline ticks, and you have two identical booklet stacks. If the
+backs come out upside down, the flip edge is set wrong — same failure,
+opposite setting.
