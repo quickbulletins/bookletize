@@ -70,6 +70,32 @@ function drawFoldGuide(face: PDFPage, x: number, sheetHeight: number): void {
   }
 }
 
+export interface SlotFit {
+  scale: number;
+  dx: number;
+  dy: number;
+}
+
+/**
+ * Pure slot-fitting geometry: scale a page by the tighter of the two
+ * ratios — enlarging smaller pages to fill the slot — and center it.
+ * dx is from the slot's left edge, dy from the sheet bottom. Exported so
+ * the placement math is golden-testable.
+ */
+export function fitSlot(
+  slotWidth: number,
+  sheetHeight: number,
+  pageWidth: number,
+  pageHeight: number,
+): SlotFit {
+  const scale = Math.min(slotWidth / pageWidth, sheetHeight / pageHeight);
+  return {
+    scale,
+    dx: (slotWidth - pageWidth * scale) / 2,
+    dy: (sheetHeight - pageHeight * scale) / 2,
+  };
+}
+
 /** Draw one face: place each non-blank slot's embedded page, scaled to fit, centered in its slot. */
 function drawFace(
   doc: PDFDocument,
@@ -91,10 +117,10 @@ function drawFace(
         x += slotW;
         return; // contentless source page: render as a blank slot
       }
-      const scale = Math.min(slotW / ep.width, sheet.height / ep.height);
+      const { scale, dx, dy } = fitSlot(slotW, sheet.height, ep.width, ep.height);
       face.drawPage(ep, {
-        x: x + (slotW - ep.width * scale) / 2,
-        y: (sheet.height - ep.height * scale) / 2,
+        x: x + dx,
+        y: dy,
         xScale: scale,
         yScale: scale,
       });
