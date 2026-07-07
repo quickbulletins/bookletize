@@ -38,12 +38,12 @@ promise — close out-of-scope issues kindly, don't implement them.
    `prepublishOnly` re-runs typecheck + tests + build automatically.
    Package is org-managed under the `quickbulletins` npm org.
 
-## Relationship to QuickBulletins (until O3 lands)
+## Relationship to QuickBulletins
 
-QuickBulletins still carries a vendored copy of this engine
-(`quickbulletins/lib/render/impose.ts` + `imposePdf.ts`). Until QB switches to
-the published package and deletes it (roadmap O3), any correctness fix here
-MUST be mirrored there, and vice versa. Say so in the commit message.
+O3 landed 2026-07-07: QuickBulletins consumes the published package (no vendored copy). Its golden test suites run against the npm release as integration insurance. Historical note: the engine was extracted from QB's
+`lib/render/impose*.ts` after the physical fold test passed. Correctness
+fixes here reach QB via a normal version bump + `pnpm update bookletize`;
+breaking API changes need a QB-side migration in the same sitting.
 
 ## Roadmap
 
