@@ -98,6 +98,93 @@ export function fitSlot(
   };
 }
 
+export interface MarkSegment {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+export interface BleedLayoutResult {
+  /** Page offset from the slot's left edge / sheet bottom (scale is always 1).
+   *  All coordinates here are slot-local: add the slot's sheet-x offset when
+   *  drawing into a face. */
+  dx: number;
+  dy: number;
+  /** The finished-size box, in slot coordinates: cut here. */
+  trim: { x: number; y: number; width: number; height: number };
+  /** Crop-mark hairlines, slot coordinates; out-of-bounds candidates are omitted. */
+  marks: MarkSegment[];
+}
+
+const MARK_LENGTH = 18;
+
+/**
+ * Pure trim-workflow geometry. Pages arrive at trim + 2·bleed per axis and
+ * place at scale 1, trim centered in the slot. The full page must fit the
+ * slot — bleed never silently falls off the sheet or into a neighbor.
+ * Marks start `bleed` outside the trim edge and extend outward; any segment
+ * leaving the slot is omitted (which is why spine-side horizontal marks
+ * disappear on tight margins: the spine is folded, never cut).
+ */
+export function bleedLayout(
+  slotWidth: number,
+  sheetHeight: number,
+  pageWidth: number,
+  pageHeight: number,
+  bleed: number,
+): BleedLayoutResult {
+  if (!Number.isFinite(bleed) || bleed < 0) {
+    throw new Error(`bleedLayout: bleed must be a finite number of points >= 0, got ${bleed}`);
+  }
+  const trimWidth = pageWidth - 2 * bleed;
+  const trimHeight = pageHeight - 2 * bleed;
+  if (trimWidth <= 0 || trimHeight <= 0) {
+    throw new Error(`bleedLayout: ${bleed}pt bleed consumes the whole ${pageWidth}×${pageHeight} page`);
+  }
+  if (pageWidth > slotWidth || pageHeight > sheetHeight) {
+    throw new Error(
+      `bleedLayout: trim + bleed (${pageWidth}×${pageHeight}) does not fit the ` +
+        `${slotWidth}×${sheetHeight} slot — use larger stock`,
+    );
+  }
+
+  const dx = (slotWidth - pageWidth) / 2;
+  const dy = (sheetHeight - pageHeight) / 2;
+  const trim = { x: dx + bleed, y: dy + bleed, width: trimWidth, height: trimHeight };
+
+  // Two candidate marks per corner (horizontal, then vertical), corners in
+  // bottom-left, bottom-right, top-left, top-right order; segments normalized
+  // so x1 <= x2 and y1 <= y2. The goldens pin this order.
+  const horizontal = (cornerX: number, dir: -1 | 1, y: number): MarkSegment => {
+    const near = cornerX + dir * bleed;
+    const far = cornerX + dir * (bleed + MARK_LENGTH);
+    return { x1: Math.min(near, far), y1: y, x2: Math.max(near, far), y2: y };
+  };
+  const vertical = (x: number, cornerY: number, dir: -1 | 1): MarkSegment => {
+    const near = cornerY + dir * bleed;
+    const far = cornerY + dir * (bleed + MARK_LENGTH);
+    return { x1: x, y1: Math.min(near, far), x2: x, y2: Math.max(near, far) };
+  };
+
+  const candidates: MarkSegment[] = [];
+  for (const [y, vDir] of [
+    [trim.y, -1],
+    [trim.y + trim.height, 1],
+  ] as const) {
+    for (const [x, hDir] of [
+      [trim.x, -1],
+      [trim.x + trim.width, 1],
+    ] as const) {
+      candidates.push(horizontal(x, hDir, y), vertical(x, y, vDir));
+    }
+  }
+
+  const inSlot = (s: MarkSegment) =>
+    s.x1 >= 0 && s.x2 <= slotWidth && s.y1 >= 0 && s.y2 <= sheetHeight;
+  return { dx, dy, trim, marks: candidates.filter(inSlot) };
+}
+
 /** Draw one face: place each non-blank slot's embedded page, scaled to fit, centered in its slot. */
 function drawFace(
   doc: PDFDocument,

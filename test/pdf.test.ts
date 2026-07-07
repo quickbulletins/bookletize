@@ -1,6 +1,6 @@
 import { PDFDocument } from "@cantoo/pdf-lib";
 import { describe, expect, test } from "vitest";
-import { SHEETS, TRIFOLD_LETTER, fitSlot, imposeSaddlePdf, imposeTrifoldPdf } from "../src/pdf.js";
+import { SHEETS, TRIFOLD_LETTER, bleedLayout, fitSlot, imposeSaddlePdf, imposeTrifoldPdf } from "../src/pdf.js";
 
 /** Logical document: n pages, each w×h points, each with real content (as Chromium output always has). */
 async function makeLogical(n: number, w: number, h: number): Promise<PDFDocument> {
@@ -122,5 +122,71 @@ describe("fitSlot", () => {
     expect(scale).toBeCloseTo(1.98);
     expect(dx).toBeCloseTo(0);
     expect(dy).toBeCloseTo(9); // (612 − 300·1.98) / 2
+  });
+});
+
+describe("bleedLayout", () => {
+  test("flagship: half-letter trim + 9pt bleed in a half-tabloid slot — all 8 marks", () => {
+    // Trim 396×612, bleed 9 → page 414×630. Slot 612×792 (tabloid-landscape half).
+    expect(bleedLayout(612, 792, 414, 630, 9)).toEqual({
+      dx: 99,
+      dy: 81,
+      trim: { x: 108, y: 90, width: 396, height: 612 },
+      marks: [
+        { x1: 81, y1: 90, x2: 99, y2: 90 },     // bottom-left horizontal
+        { x1: 108, y1: 63, x2: 108, y2: 81 },   // bottom-left vertical
+        { x1: 513, y1: 90, x2: 531, y2: 90 },   // bottom-right horizontal
+        { x1: 504, y1: 63, x2: 504, y2: 81 },   // bottom-right vertical
+        { x1: 81, y1: 702, x2: 99, y2: 702 },   // top-left horizontal
+        { x1: 108, y1: 711, x2: 108, y2: 729 }, // top-left vertical
+        { x1: 513, y1: 702, x2: 531, y2: 702 }, // top-right horizontal
+        { x1: 504, y1: 711, x2: 504, y2: 729 }, // top-right vertical
+      ],
+    });
+  });
+
+  test("marks that would leave the slot are omitted (spine-side rule falls out)", () => {
+    // Trim 576×612, bleed 9 → page 594×630 in a 612×792 slot: horizontal marks
+    // would land at x∈[603,621] and [−9,9] — outside [0,612] — so only the
+    // 4 vertical marks survive.
+    const { marks } = bleedLayout(612, 792, 594, 630, 9);
+    expect(marks).toEqual([
+      { x1: 18, y1: 63, x2: 18, y2: 81 },
+      { x1: 594, y1: 63, x2: 594, y2: 81 },
+      { x1: 18, y1: 711, x2: 18, y2: 729 },
+      { x1: 594, y1: 711, x2: 594, y2: 729 },
+    ]);
+  });
+
+  test("bleed 0 is marks-only mode: marks touch the trim corners", () => {
+    const { trim, marks } = bleedLayout(612, 792, 396, 612, 0);
+    expect(trim).toEqual({ x: 108, y: 90, width: 396, height: 612 });
+    expect(marks).toHaveLength(8);
+    expect(marks[0]).toEqual({ x1: 90, y1: 90, x2: 108, y2: 90 });
+    expect(marks[1]).toEqual({ x1: 108, y1: 72, x2: 108, y2: 90 });
+  });
+
+  test("marks landing exactly on the slot boundary survive", () => {
+    // Slot 450×792, page 414×630, bleed 9 → trim {27, 90, 396, 612}: the
+    // left horizontal mark ends exactly at x=0 and the right one exactly at
+    // x=450 — inclusive bounds keep them.
+    const { marks } = bleedLayout(450, 792, 414, 630, 9);
+    expect(marks).toHaveLength(8);
+    expect(marks).toContainEqual({ x1: 0, y1: 90, x2: 18, y2: 90 });
+    expect(marks).toContainEqual({ x1: 432, y1: 90, x2: 450, y2: 90 });
+  });
+
+  test("page that doesn't fit the slot throws (A5+bleed needs A3 stock, not A4)", () => {
+    // A5 trim 419.53×595.28 + 9pt bleed → 437.53×613.28 vs half-A4 slot 420.945×595.28.
+    expect(() => bleedLayout(841.89 / 2, 595.28, 437.53, 613.28, 9)).toThrow(/larger stock/);
+  });
+
+  test("bleed that consumes the page throws", () => {
+    expect(() => bleedLayout(612, 792, 414, 630, 207)).toThrow(/consumes/);
+  });
+
+  test("negative or non-finite bleed throws", () => {
+    expect(() => bleedLayout(612, 792, 414, 630, -1)).toThrow(/bleed/);
+    expect(() => bleedLayout(612, 792, 414, 630, Number.NaN)).toThrow(/bleed/);
   });
 });
