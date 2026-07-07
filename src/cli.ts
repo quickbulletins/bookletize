@@ -2,7 +2,7 @@
 /**
  * npx bookletize — impose a PDF from the command line.
  *
- *   bookletize booklet service.pdf [-o booklet.pdf] [--sheet <name>] [--bleed <points>] [--crop-marks] [--no-guides]
+ *   bookletize booklet service.pdf [-o booklet.pdf] [--sheet <name>] [--bleed <points>] [--crop-marks] [--two-up] [--no-guides]
  *   bookletize trifold flyer.pdf   [-o trifold.pdf]
  *
  * Then print duplex, FLIP ON SHORT EDGE (see PRINTING.md).
@@ -20,7 +20,7 @@ const SHEET_NAMES: SheetName[] = [
 ];
 
 const USAGE = `usage:
-  bookletize booklet <input.pdf> [-o <output.pdf>] [--sheet ${SHEET_NAMES.join("|")}] [--bleed <points>] [--crop-marks] [--no-guides]
+  bookletize booklet <input.pdf> [-o <output.pdf>] [--sheet ${SHEET_NAMES.join("|")}] [--bleed <points>] [--crop-marks] [--two-up] [--no-guides]
   bookletize trifold <input.pdf> [-o <output.pdf>]
 
 Print the result duplex, FLIP ON SHORT EDGE.`;
@@ -33,6 +33,7 @@ export interface CliArgs {
   foldGuides: boolean;
   bleed?: number;
   cropMarks: boolean;
+  twoUp: boolean;
 }
 
 export function parseArgs(argv: string[]): CliArgs {
@@ -50,6 +51,7 @@ export function parseArgs(argv: string[]): CliArgs {
   let foldGuides = true;
   let bleed: number | undefined;
   let cropMarks = false;
+  let twoUp = false;
 
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i]!;
@@ -73,6 +75,8 @@ export function parseArgs(argv: string[]): CliArgs {
       bleed = parsed;
     } else if (arg === "--crop-marks") {
       cropMarks = true;
+    } else if (arg === "--two-up") {
+      twoUp = true;
     } else if (arg.startsWith("-")) {
       throw new Error(`unknown option "${arg}"\n${USAGE}`);
     } else if (!input) {
@@ -84,16 +88,25 @@ export function parseArgs(argv: string[]): CliArgs {
 
   if (!input) throw new Error(`missing input PDF\n${USAGE}`);
 
-  if (command === "trifold" && (bleed !== undefined || cropMarks)) {
-    throw new Error(`--bleed/--crop-marks apply to the booklet command only\n${USAGE}`);
+  if (command === "trifold" && (bleed !== undefined || cropMarks || twoUp)) {
+    throw new Error(`--bleed/--crop-marks/--two-up apply to the booklet command only\n${USAGE}`);
   }
 
   output ??= input.replace(/\.pdf$/i, "") + `.${command}.pdf`;
 
-  return { command, input, output, sheet, foldGuides, bleed, cropMarks };
+  return { command, input, output, sheet, foldGuides, bleed, cropMarks, twoUp };
 }
 
-export async function runCli(argv: string[]): Promise<string> {
+export type FlipEdge = "short" | "long";
+
+/** The print instruction for a finished job — 2-up output is the one long-edge exception. */
+export function printInstruction(flip: FlipEdge): string {
+  return flip === "long"
+    ? "print duplex, FLIP ON LONG EDGE, cut at the midline ticks"
+    : "print duplex, FLIP ON SHORT EDGE";
+}
+
+export async function runCli(argv: string[]): Promise<{ output: string; flipEdge: FlipEdge }> {
   const args = parseArgs(argv);
   const bytes = new Uint8Array(await readFile(args.input));
   const out =
@@ -103,10 +116,11 @@ export async function runCli(argv: string[]): Promise<string> {
           foldGuides: args.foldGuides,
           bleed: args.bleed,
           cropMarks: args.cropMarks,
+          twoUp: args.twoUp,
         })
       : await applyTrifold(bytes);
   await writeFile(args.output, out);
-  return args.output;
+  return { output: args.output, flipEdge: args.twoUp ? "long" : "short" };
 }
 
 // Invoked as a binary (not imported): run and report.
@@ -115,8 +129,8 @@ const invokedDirectly =
   import.meta.url.endsWith(process.argv[1].split("/").pop() ?? "\0");
 if (invokedDirectly) {
   runCli(process.argv.slice(2)).then(
-    (out) => {
-      console.log(`wrote ${out} — print duplex, FLIP ON SHORT EDGE`);
+    (result) => {
+      console.log(`wrote ${result.output} — ${printInstruction(result.flipEdge)}`);
     },
     (err: unknown) => {
       console.error(err instanceof Error ? err.message : String(err));

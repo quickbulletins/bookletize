@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { parseArgs } from "../src/cli.js";
+import { parseArgs, printInstruction } from "../src/cli.js";
 
 describe("parseArgs", () => {
   test("booklet with explicit output", () => {
@@ -10,6 +10,7 @@ describe("parseArgs", () => {
       sheet: "letter-landscape",
       foldGuides: true,
       cropMarks: false,
+      twoUp: false,
     });
   });
 
@@ -53,6 +54,19 @@ describe("parseArgs", () => {
   test("rejects trim-workflow flags on trifold", () => {
     expect(() => parseArgs(["trifold", "in.pdf", "--bleed", "9"])).toThrow(/booklet command only/);
     expect(() => parseArgs(["trifold", "in.pdf", "--crop-marks"])).toThrow(/booklet command only/);
+    expect(() => parseArgs(["trifold", "in.pdf", "--two-up"])).toThrow(/booklet command only/);
+  });
+
+  test("accepts --two-up for booklet", () => {
+    expect(parseArgs(["booklet", "in.pdf", "--two-up"]).twoUp).toBe(true);
+    expect(parseArgs(["booklet", "in.pdf"]).twoUp).toBe(false);
+  });
+
+  test("printInstruction: long-edge flip only for two-up output", () => {
+    expect(printInstruction("short")).toBe("print duplex, FLIP ON SHORT EDGE");
+    expect(printInstruction("long")).toBe(
+      "print duplex, FLIP ON LONG EDGE, cut at the midline ticks",
+    );
   });
 
   test("rejects unknown commands, missing input, unknown flags, bad sheets", () => {
