@@ -1,2 +1,6 @@
+# pnpm 11 reads allowBuilds; onlyBuiltDependencies is the pnpm 10 spelling
+# (CI pins pnpm 10) — drop the legacy key when CI moves to pnpm 11.
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
+onlyBuiltDependencies:
+  - esbuild
