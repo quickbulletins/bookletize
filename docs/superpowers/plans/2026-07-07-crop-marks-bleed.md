@@ -13,7 +13,7 @@
 - The sequence `pushOperators(pushGraphicsState(), rectangle(x, y, w, h), clip(), endPath())` … `drawPage` … `pushOperators(popGraphicsState())` emits `q / <x y w h> re / W / n / …page ops… / Q` and survives save/load.
 - In a saved-then-reloaded document, `page.node.Contents()` is a `PDFArray` of stream refs; `decodePDFRawStream(context.lookup(ref) as PDFRawStream).decode()` returns the operator bytes (`re\nW\nn` was observed verbatim). This powers the operator-level test assertions below — no byte-length proxies needed.
 
-**Conventions binding every task:** commits direct to `main`, each message ends with `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`; gate per code commit `npm run typecheck && npm test && npm run build` (fall back to `./node_modules/.bin/*` if pnpm wrappers misbehave); no version bump, no push, no CI changes. Suite starts at 32 passing, ends at 47. While a red test references a missing export, `tsc` also fails — typecheck gates only at green points.
+**Conventions binding every task:** commits direct to `main`, each message ends with `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`; gate per code commit `npm run typecheck && npm test && npm run build` (fall back to `./node_modules/.bin/*` if pnpm wrappers misbehave); no version bump, no push, no CI changes. Suite starts at 32 passing, ends at 49 (two goldens beyond this plan's original count were added during review). While a red test references a missing export, `tsc` also fails — typecheck gates only at green points.
 
 ---
 
@@ -672,7 +672,7 @@ return `{ command, input, output, sheet, foldGuides, bleed, cropMarks }`.
 - [ ] **Step 4: Full gate.**
 
 Run: `npm run typecheck && npm test`
-Expected: tsc clean; `Tests  47 passed (47)`.
+Expected: tsc clean; `Tests  49 passed (49)`.
 
 - [ ] **Step 5: Commit.**
 
@@ -749,7 +749,7 @@ too small for trim + bleed, it means exactly that: pick larger stock.
 - [ ] **Step 4: Full gate including build.**
 
 Run: `npm run typecheck && npm test && npm run build`
-Expected: tsc clean; `Tests  47 passed (47)`; tsup emits ESM/CJS/dts.
+Expected: tsc clean; `Tests  49 passed (49)`; tsup emits ESM/CJS/dts.
 
 - [ ] **Step 5: Commit.**
 
