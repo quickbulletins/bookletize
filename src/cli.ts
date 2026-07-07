@@ -2,7 +2,7 @@
 /**
  * npx bookletize — impose a PDF from the command line.
  *
- *   bookletize booklet service.pdf [-o booklet.pdf] [--sheet letter-landscape|legal-landscape|a4-landscape|a3-landscape] [--no-guides]
+ *   bookletize booklet service.pdf [-o booklet.pdf] [--sheet <name>] [--bleed <points>] [--crop-marks] [--no-guides]
  *   bookletize trifold flyer.pdf   [-o trifold.pdf]
  *
  * Then print duplex, FLIP ON SHORT EDGE (see PRINTING.md).
@@ -11,13 +11,19 @@ import { readFile, writeFile } from "node:fs/promises";
 import { applySaddle, applyTrifold } from "./pdf.js";
 import type { SheetName } from "./pdf.js";
 
+const SHEET_NAMES: SheetName[] = [
+  "letter-landscape",
+  "legal-landscape",
+  "a4-landscape",
+  "a3-landscape",
+  "tabloid-landscape",
+];
+
 const USAGE = `usage:
-  bookletize booklet <input.pdf> [-o <output.pdf>] [--sheet letter-landscape|legal-landscape|a4-landscape|a3-landscape] [--no-guides]
+  bookletize booklet <input.pdf> [-o <output.pdf>] [--sheet ${SHEET_NAMES.join("|")}] [--bleed <points>] [--crop-marks] [--no-guides]
   bookletize trifold <input.pdf> [-o <output.pdf>]
 
 Print the result duplex, FLIP ON SHORT EDGE.`;
-
-const SHEET_NAMES: SheetName[] = ["letter-landscape", "legal-landscape", "a4-landscape", "a3-landscape"];
 
 export interface CliArgs {
   command: "booklet" | "trifold";
@@ -25,6 +31,8 @@ export interface CliArgs {
   output: string;
   sheet: SheetName;
   foldGuides: boolean;
+  bleed?: number;
+  cropMarks: boolean;
 }
 
 export function parseArgs(argv: string[]): CliArgs {
@@ -40,6 +48,8 @@ export function parseArgs(argv: string[]): CliArgs {
   let output: string | undefined;
   let sheet: SheetName = "letter-landscape";
   let foldGuides = true;
+  let bleed: number | undefined;
+  let cropMarks = false;
 
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i]!;
@@ -54,6 +64,15 @@ export function parseArgs(argv: string[]): CliArgs {
       sheet = value as SheetName;
     } else if (arg === "--no-guides") {
       foldGuides = false;
+    } else if (arg === "--bleed") {
+      const value = rest[++i];
+      const parsed = value === undefined ? Number.NaN : Number(value);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        throw new Error(`--bleed needs a number of points >= 0\n${USAGE}`);
+      }
+      bleed = parsed;
+    } else if (arg === "--crop-marks") {
+      cropMarks = true;
     } else if (arg.startsWith("-")) {
       throw new Error(`unknown option "${arg}"\n${USAGE}`);
     } else if (!input) {
@@ -64,9 +83,14 @@ export function parseArgs(argv: string[]): CliArgs {
   }
 
   if (!input) throw new Error(`missing input PDF\n${USAGE}`);
+
+  if (command === "trifold" && (bleed !== undefined || cropMarks)) {
+    throw new Error(`--bleed/--crop-marks apply to the booklet command only\n${USAGE}`);
+  }
+
   output ??= input.replace(/\.pdf$/i, "") + `.${command}.pdf`;
 
-  return { command, input, output, sheet, foldGuides };
+  return { command, input, output, sheet, foldGuides, bleed, cropMarks };
 }
 
 export async function runCli(argv: string[]): Promise<string> {
@@ -74,7 +98,12 @@ export async function runCli(argv: string[]): Promise<string> {
   const bytes = new Uint8Array(await readFile(args.input));
   const out =
     args.command === "booklet"
-      ? await applySaddle(bytes, { sheet: args.sheet, foldGuides: args.foldGuides })
+      ? await applySaddle(bytes, {
+          sheet: args.sheet,
+          foldGuides: args.foldGuides,
+          bleed: args.bleed,
+          cropMarks: args.cropMarks,
+        })
       : await applyTrifold(bytes);
   await writeFile(args.output, out);
   return args.output;

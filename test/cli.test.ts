@@ -9,6 +9,7 @@ describe("parseArgs", () => {
       output: "out.pdf",
       sheet: "letter-landscape",
       foldGuides: true,
+      cropMarks: false,
     });
   });
 
@@ -26,6 +27,32 @@ describe("parseArgs", () => {
   test("accepts the A-series sheets", () => {
     expect(parseArgs(["booklet", "in.pdf", "--sheet", "a4-landscape"]).sheet).toBe("a4-landscape");
     expect(parseArgs(["booklet", "in.pdf", "--sheet", "a3-landscape"]).sheet).toBe("a3-landscape");
+  });
+
+  test("accepts --bleed, --crop-marks, and tabloid-landscape for booklet", () => {
+    const parsed = parseArgs([
+      "booklet", "in.pdf", "--sheet", "tabloid-landscape", "--bleed", "9", "--crop-marks",
+    ]);
+    expect(parsed.sheet).toBe("tabloid-landscape");
+    expect(parsed.bleed).toBe(9);
+    expect(parsed.cropMarks).toBe(true);
+  });
+
+  test("trim-workflow defaults are off", () => {
+    const parsed = parseArgs(["booklet", "in.pdf"]);
+    expect(parsed.bleed).toBeUndefined();
+    expect(parsed.cropMarks).toBe(false);
+  });
+
+  test("rejects bad --bleed values", () => {
+    expect(() => parseArgs(["booklet", "in.pdf", "--bleed", "nope"])).toThrow(/needs a number of points/);
+    expect(() => parseArgs(["booklet", "in.pdf", "--bleed", "-2"])).toThrow(/needs a number of points/);
+    expect(() => parseArgs(["booklet", "in.pdf", "--bleed"])).toThrow(/needs a number of points/);
+  });
+
+  test("rejects trim-workflow flags on trifold", () => {
+    expect(() => parseArgs(["trifold", "in.pdf", "--bleed", "9"])).toThrow(/booklet command only/);
+    expect(() => parseArgs(["trifold", "in.pdf", "--crop-marks"])).toThrow(/booklet command only/);
   });
 
   test("rejects unknown commands, missing input, unknown flags, bad sheets", () => {
