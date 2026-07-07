@@ -319,6 +319,10 @@ function resolveSheet(sheet: SheetName | SheetSpec): SheetSpec {
 export interface ApplySaddleOptions extends SaddleOptions {
   /** Named size or a custom {width, height} in PDF points. Default letter-landscape. */
   sheet?: SheetName | SheetSpec;
+  /** Step-and-repeat: stack two copies of every face on a double-height
+   *  sheet (cut once at the midline → two identical booklets). NOTE: the
+   *  stacked output duplexes FLIP ON LONG EDGE. */
+  twoUp?: boolean;
 }
 
 /** Bytes in, imposed booklet bytes out — the README's front-door API. */
@@ -327,11 +331,14 @@ export async function applySaddle(
   opts: ApplySaddleOptions = {},
 ): Promise<Uint8Array> {
   const logical = await PDFDocument.load(pdf);
-  const out = await imposeSaddlePdf(logical, resolveSheet(opts.sheet ?? "letter-landscape"), {
+  const imposed = await imposeSaddlePdf(logical, resolveSheet(opts.sheet ?? "letter-landscape"), {
     foldGuides: opts.foldGuides,
     bleed: opts.bleed,
     cropMarks: opts.cropMarks,
   });
+  const out = opts.twoUp
+    ? await imposeTwoUpPdf(imposed, { cutGuides: opts.foldGuides !== false })
+    : imposed;
   return out.save();
 }
 

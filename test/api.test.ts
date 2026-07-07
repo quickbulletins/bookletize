@@ -44,11 +44,51 @@ describe("applySaddle", () => {
     expect(doc.getPage(0).getSize().width).toBeCloseTo(1224);
   });
 
+  test("twoUp: true stacks faces on a double-height sheet", async () => {
+    const input = await makeLogicalBytes(8, 396, 612);
+    const out = await applySaddle(input, { twoUp: true });
+    const doc = await PDFDocument.load(out);
+    expect(doc.getPageCount()).toBe(4);
+    expect(doc.getPage(0).getSize().width).toBeCloseTo(792);
+    expect(doc.getPage(0).getSize().height).toBeCloseTo(1224);
+  });
+
+  test("twoUp composes with the trim workflow (exotic stock, valid math)", async () => {
+    const input = await makeLogicalBytes(4, 414, 630);
+    const out = await applySaddle(input, {
+      sheet: "tabloid-landscape",
+      bleed: 9,
+      cropMarks: true,
+      twoUp: true,
+    });
+    const doc = await PDFDocument.load(out);
+    expect(doc.getPageCount()).toBe(2);
+    expect(doc.getPage(0).getSize().width).toBeCloseTo(1224);
+    expect(doc.getPage(0).getSize().height).toBeCloseTo(1584);
+  });
+
+  test("twoUp tolerates an all-blank padded face when guides are off", async () => {
+    // 1 logical page pads to 4: sheet 1's back face is entirely blank, and
+    // with foldGuides: false it has no content stream at all — the stacker
+    // must skip embedding it, not crash.
+    const input = await makeLogicalBytes(1, 396, 612);
+    const out = await applySaddle(input, { foldGuides: false, twoUp: true });
+    const doc = await PDFDocument.load(out);
+    expect(doc.getPageCount()).toBe(2);
+    expect(doc.getPage(1).getSize().height).toBeCloseTo(1224);
+  });
+
   test("accepts a custom SheetSpec", async () => {
     const input = await makeLogicalBytes(4, 396, 612);
     const out = await applySaddle(input, { sheet: { width: 842, height: 595 } }); // A4 landscape
     const doc = await PDFDocument.load(out);
     expect(doc.getPage(0).getSize().width).toBeCloseTo(842);
+
+    // twoUp derives its big sheet from the imposed faces, so custom specs stack too.
+    const stacked = await applySaddle(input, { sheet: { width: 842, height: 595 }, twoUp: true });
+    const stackedDoc = await PDFDocument.load(stacked);
+    expect(stackedDoc.getPage(0).getSize().width).toBeCloseTo(842);
+    expect(stackedDoc.getPage(0).getSize().height).toBeCloseTo(1190);
   });
 
   test("rejects unknown sheet names", async () => {
