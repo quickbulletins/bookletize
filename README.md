@@ -106,6 +106,8 @@ or school booklets: it's the same arithmetic. Enjoy.
 - **0.3** — browser build + a free in-browser [Booklet this PDF](https://quickbulletins.app/booklet?utm_source=bookletize) tool (your PDF never leaves your machine)
 - **1.0** — API freeze, semver promise
 
+Scope detail, build order, and acceptance gates: [ROADMAP.md](ROADMAP.md).
+
 ## License
 
 MIT © Heavenly Technologies LLC

@@ -47,6 +47,5 @@ breaking API changes need a QB-side migration in the same sitting.
 
 ## Roadmap
 
-v0.2: A4/A5 + half-legal, cut-and-stack, 2-up, crop marks + bleed,
-creep/shingling compensation, printer-quirks doc. v0.3: browser build + free
-web tool. 1.0: API freeze. Quarterly cadence; correctness fixes out-of-band.
+[ROADMAP.md](ROADMAP.md) is the single source of truth — scope, build
+order, and acceptance gates live there, nowhere else.
