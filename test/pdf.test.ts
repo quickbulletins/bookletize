@@ -1,6 +1,6 @@
 import { PDFArray, PDFDocument, PDFRawStream, decodePDFRawStream } from "@cantoo/pdf-lib";
 import { describe, expect, test } from "vitest";
-import { SHEETS, TRIFOLD_LETTER, bleedLayout, fitSlot, imposeSaddlePdf, imposeTrifoldPdf } from "../src/pdf.js";
+import { SHEETS, TRIFOLD_LETTER, bleedLayout, fitSlot, imposeSaddlePdf, imposeTrifoldPdf, imposeTwoUpPdf } from "../src/pdf.js";
 
 /** Logical document: n pages, each w×h points, each with real content (as Chromium output always has). */
 async function makeLogical(n: number, w: number, h: number): Promise<PDFDocument> {
@@ -246,5 +246,45 @@ describe("imposeSaddlePdf bleed mode", () => {
   test("stock too small for trim + bleed rejects (A5+bleed needs A3, not A4)", async () => {
     const logical = await makeLogical(4, 437.53, 613.28);
     await expect(imposeSaddlePdf(logical, SHEETS.a4Landscape, { bleed: 9 })).rejects.toThrow(/larger stock/);
+  });
+});
+
+describe("imposeTwoUpPdf", () => {
+  test("stacks each face twice on a derived double-height sheet", async () => {
+    const logical = await makeLogical(8, 396, 612);
+    const imposed = await imposeSaddlePdf(logical, SHEETS.letterLandscape);
+    const out = await imposeTwoUpPdf(imposed);
+    expect(out.getPageCount()).toBe(4); // face count preserved; sheets-per-booklet halve at the cutter
+    const { width, height } = out.getPage(0).getSize();
+    expect(width).toBeCloseTo(792);
+    expect(height).toBeCloseTo(1224); // tabloid portrait, derived — no SHEETS entry
+    const ops = await faceOperators(out, 0);
+    expect((ops.match(/ Do\b/g) ?? []).length).toBe(2); // two copies
+    expect(ops).toContain("1 0 0 1 0 0 cm");
+    expect(ops).toContain("1 0 0 1 0 612 cm"); // second copy offset by the small height
+    expect(ops).toContain("4 612 m"); // midline cut tick, left edge
+    expect(ops).toContain("16 612 l");
+    expect(ops).toContain("776 612 m"); // right tick derives from sheetWidth − 16
+  });
+
+  test("cutGuides: false suppresses the midline ticks", async () => {
+    const logical = await makeLogical(4, 396, 612);
+    const imposed = await imposeSaddlePdf(logical, SHEETS.letterLandscape);
+    const out = await imposeTwoUpPdf(imposed, { cutGuides: false });
+    const ops = await faceOperators(out, 0);
+    expect((ops.match(/ Do\b/g) ?? []).length).toBe(2);
+    expect(ops).not.toContain("4 612 m");
+  });
+
+  test("rejects documents whose faces differ in size", async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage([100, 100]).drawRectangle({ x: 1, y: 1, width: 5, height: 5 });
+    doc.addPage([200, 200]).drawRectangle({ x: 1, y: 1, width: 5, height: 5 });
+    await expect(imposeTwoUpPdf(doc)).rejects.toThrow(/share one size/);
+  });
+
+  test("rejects an empty document", async () => {
+    const doc = await PDFDocument.create();
+    await expect(imposeTwoUpPdf(doc)).rejects.toThrow(/no pages/);
   });
 });

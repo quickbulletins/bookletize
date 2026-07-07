@@ -366,3 +366,74 @@ export async function imposeTrifoldPdf(logical: PDFDocument): Promise<PDFDocumen
   }
   return out;
 }
+
+// ------------------------------------------------------------ 2-up (step-and-repeat)
+
+/** Short dashed horizontal ticks at the left and right sheet edges at a cut y-position. */
+function drawCutGuide(face: PDFPage, y: number, sheetWidth: number): void {
+  for (const [x1, x2] of [
+    [4, 16],
+    [sheetWidth - 16, sheetWidth - 4],
+  ] as const) {
+    face.drawLine({
+      start: { x: x1, y },
+      end: { x: x2, y },
+      thickness: 0.5,
+      color: GUIDE_COLOR,
+      dashArray: [2, 2],
+    });
+  }
+}
+
+export interface TwoUpOptions {
+  /** Dashed midline cut ticks at the sheet's left and right edges. Default true. */
+  cutGuides?: boolean;
+}
+
+/**
+ * Step-and-repeat: stack two identical copies of every face of an
+ * already-imposed document on a derived double-height sheet
+ * (letter-landscape faces → tabloid portrait). Cut the printed stack at
+ * the midline for two identical booklet stacks. Copy-identity keeps the
+ * duplex halves aligned. NOTE: unlike everything else this library emits,
+ * the stacked output duplexes FLIP ON LONG EDGE — the small sheet's
+ * vertical-axis flip is the portrait big sheet's long-edge flip
+ * (PRINTING.md).
+ */
+export async function imposeTwoUpPdf(
+  imposed: PDFDocument,
+  opts: TwoUpOptions = {},
+): Promise<PDFDocument> {
+  const faces = imposed.getPages();
+  if (faces.length === 0) {
+    throw new Error("imposeTwoUpPdf: document has no pages");
+  }
+  const { width, height } = faces[0]!.getSize();
+  for (const face of faces) {
+    const size = face.getSize();
+    if (Math.abs(size.width - width) > 1e-3 || Math.abs(size.height - height) > 1e-3) {
+      throw new Error(
+        `imposeTwoUpPdf: all faces must share one size — got ${width}×${height} and ${size.width}×${size.height}`,
+      );
+    }
+  }
+
+  const out = await PDFDocument.create();
+  const embedded = await embedLogical(out, imposed);
+
+  for (let i = 0; i < faces.length; i++) {
+    const big = out.addPage([width, height * 2]);
+    const ep = embedded[i];
+    if (ep) {
+      big.drawPage(ep, { x: 0, y: 0 });
+      big.drawPage(ep, { x: 0, y: height });
+    }
+    // Contentless faces (possible with foldGuides: false and an all-blank
+    // padded face) embed as null: the big page stays blank but keeps its
+    // place so duplex front/back order is preserved.
+    // Ticks sit on the cut line in the sacrificial trim margin — safe to
+    // overprint even full-bleed faces; the guillotine destroys that ink.
+    if (opts.cutGuides !== false) drawCutGuide(big, height, width);
+  }
+  return out;
+}
