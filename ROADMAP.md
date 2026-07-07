@@ -34,8 +34,10 @@ Build order (each lands red-green; ⚠ marks a paper gate):
    `a3-landscape` sheet specs → A5 and A4 booklets. Same fold pattern as
    letter, which is already print-verified; pre-tag checklist item:
    spot-check on A4 stock.
-2. **Crop marks + bleed** — applier-side drawing in `src/pdf.ts`; no new
-   fold pattern.
+2. **Crop marks + bleed** *(landed 2026-07)* — trim workflow: pages at
+   trim+2·bleed place at scale 1 on oversized stock (`tabloid-landscape`,
+   `a3-landscape`), clipped to their slots, black hairline marks at the
+   trim corners. No new fold pattern.
 3. **2-up** — new pure mapping in `src/impose.ts` + golden tests.
 4. **Cut-and-stack** — new pure mapping + golden tests. ⚠ physical fold
    test before 0.2.0 tags.
@@ -50,7 +52,8 @@ Build order (each lands red-green; ⚠ marks a paper gate):
 - Browser build (no Node built-ins on the applier path) + a free
   in-browser "Booklet this PDF" tool — your PDF never leaves your machine.
 - Explicitly deferred candidates: **A4 tri-fold** (new fold layout → ⚠
-  paper gate), further regional sheet names as people ask.
+  paper gate), **trifold bleed** (narrow-flap trim geometry), further
+  regional sheet names as people ask.
 
 ## v1.0
 
