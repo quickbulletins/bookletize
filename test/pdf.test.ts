@@ -49,6 +49,15 @@ describe("imposeSaddlePdf", () => {
     expect(height).toBeCloseTo(841.89);
   });
 
+  test("8 half-tabloid pages -> 4 tabloid-landscape faces", async () => {
+    const logical = await makeLogical(8, 612, 792);
+    const out = await imposeSaddlePdf(logical, SHEETS.tabloidLandscape);
+    expect(out.getPageCount()).toBe(4);
+    const { width, height } = out.getPage(0).getSize();
+    expect(width).toBeCloseTo(1224);
+    expect(height).toBeCloseTo(792);
+  });
+
   test("6 pages pad to 8: still 4 faces, blank slots render without error", async () => {
     const logical = await makeLogical(6, 396, 612);
     const out = await imposeSaddlePdf(logical, SHEETS.letterLandscape);

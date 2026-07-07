@@ -37,6 +37,13 @@ describe("applySaddle", () => {
     expect(doc.getPage(0).getSize().width).toBeCloseTo(841.89);
   });
 
+  test('accepts "tabloid-landscape" (half-letter with room for bleed)', async () => {
+    const input = await makeLogicalBytes(4, 612, 792);
+    const out = await applySaddle(input, { sheet: "tabloid-landscape" });
+    const doc = await PDFDocument.load(out);
+    expect(doc.getPage(0).getSize().width).toBeCloseTo(1224);
+  });
+
   test("accepts a custom SheetSpec", async () => {
     const input = await makeLogicalBytes(4, 396, 612);
     const out = await applySaddle(input, { sheet: { width: 842, height: 595 } }); // A4 landscape
