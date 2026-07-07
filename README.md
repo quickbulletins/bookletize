@@ -102,7 +102,7 @@ or school booklets: it's the same arithmetic. Enjoy.
 ## Roadmap
 
 - **0.1** — saddle + tri-fold (letter/legal), CLI, fold guides ← *you are here*
-- **0.2** — A4/A5, cut-and-stack, 2-up, crop marks + bleed, creep/shingling compensation
+- **0.2** — A4/A5 *(landed)*, cut-and-stack, 2-up, crop marks + bleed, creep/shingling compensation
 - **0.3** — browser build + a free in-browser [Booklet this PDF](https://quickbulletins.app/booklet?utm_source=bookletize) tool (your PDF never leaves your machine)
 - **1.0** — API freeze, semver promise
 

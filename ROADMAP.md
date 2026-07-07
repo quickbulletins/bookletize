@@ -30,7 +30,7 @@ without leaving imposition.
 
 Build order (each lands red-green; ⚠ marks a paper gate):
 
-1. **A4/A5 sheets** *(in progress)* — named `a4-landscape` and
+1. **A4/A5 sheets** *(landed 2026-07)* — named `a4-landscape` and
    `a3-landscape` sheet specs → A5 and A4 booklets. Same fold pattern as
    letter, which is already print-verified; pre-tag checklist item:
    spot-check on A4 stock.
