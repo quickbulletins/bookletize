@@ -43,8 +43,8 @@ npx bookletize booklet service.pdf -o booklet.pdf
 npx bookletize trifold flyer.pdf -o trifold.pdf
 ```
 
-Options: `--sheet letter-landscape|legal-landscape` (booklet), `--no-guides`, `-o/--out`
-(defaults to `<input>.<command>.pdf`).
+Options: `--sheet letter-landscape|legal-landscape|a4-landscape|a3-landscape` (booklet),
+`--no-guides`, `-o/--out` (defaults to `<input>.<command>.pdf`).
 
 Then print **duplex, "flip on short edge"** for booklets. (This one printer-dialog setting
 causes more upside-down back pages than everything else combined — see
@@ -69,23 +69,23 @@ import { applySaddle } from "bookletize/pdf";
 
 // Real PDFs in, imposed sheet faces out (Uint8Array).
 const bytes = await applySaddle(pdfBytes, {
-  sheet: "letter-landscape",   // or "legal-landscape", or { width, height } in points
+  sheet: "letter-landscape",   // or "legal-landscape" | "a4-landscape" | "a3-landscape", or { width, height } in points
   foldGuides: true,            // dashed tick marks on the spine (default true)
 });
 ```
 
-Lower-level entry points (`imposeSaddlePdf`, `imposeTrifoldPdf`, `SHEETS`,
-`TRIFOLD_LETTER`) are exported from `bookletize/pdf` for callers who already
-hold a `PDFDocument`.
+Lower-level entry points (`imposeSaddlePdf`, `imposeTrifoldPdf`, `fitSlot`,
+`SHEETS`, `TRIFOLD_LETTER`) are exported from `bookletize/pdf` for callers
+who already hold a `PDFDocument`.
 
 ## What it does / doesn't do
 
 | Does | Doesn't |
 |---|---|
-| Saddle-fold booklets (half-letter, half-legal) | Render or lay out your content |
+| Saddle-fold booklets (half-letter, half-legal, A5, A4) | Render or lay out your content |
 | Tri-folds with correct narrow-flap allowance | Edit PDF content |
 | Fold guides, blank padding, page-slot math | Compress, encrypt, or sign PDFs |
-| (v0.2) crop marks, bleed, creep compensation, A4/A5, cut-and-stack | Anything that isn't imposition |
+| (v0.2) crop marks, bleed, creep compensation, cut-and-stack, 2-up | Anything that isn't imposition |
 
 That last row is a promise: **scope is imposition only.** Issues asking for rendering or
 layout features will be closed kindly. This keeps the library small enough to trust and small
