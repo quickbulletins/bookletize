@@ -1,0 +1,67 @@
+{
+  "name": "bookletize",
+  "version": "0.1.0",
+  "description": "Turn ordinary PDFs into press-ready folded booklets — saddle and tri-fold imposition with fold guides.",
+  "keywords": [
+    "pdf",
+    "imposition",
+    "booklet",
+    "saddle-stitch",
+    "trifold",
+    "duplex",
+    "print",
+    "zine",
+    "pdf-lib"
+  ],
+  "license": "MIT",
+  "author": "Heavenly Technologies LLC",
+  "repository": "github:quickbulletins/bookletize",
+  "homepage": "https://github.com/quickbulletins/bookletize#readme",
+  "bugs": "https://github.com/quickbulletins/bookletize/issues",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "bookletize": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./pdf": {
+      "types": "./dist/pdf.d.ts",
+      "import": "./dist/pdf.js",
+      "require": "./dist/pdf.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
+  },
+  "dependencies": {
+    "@cantoo/pdf-lib": "^2.7.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

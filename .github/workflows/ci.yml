@@ -1,0 +1,50 @@
+name: CI
+
+# Safe by construction: no github.event.* values are interpolated anywhere;
+# the only expression used is our own build matrix's node version.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm exec vitest run
+      - run: pnpm exec tsup
+      - name: CLI smoke — impose and verify a booklet
+        run: |
+          node -e "
+          const { PDFDocument } = require('@cantoo/pdf-lib');
+          (async () => {
+            const doc = await PDFDocument.create();
+            for (let i = 0; i < 6; i++) doc.addPage([396, 612]).drawRectangle({ x: 10, y: 10, width: 40, height: 40 });
+            require('fs').writeFileSync('smoke.pdf', await doc.save());
+          })();
+          "
+          node dist/cli.js booklet smoke.pdf -o smoke.booklet.pdf
+          node -e "
+          const { PDFDocument } = require('@cantoo/pdf-lib');
+          (async () => {
+            const doc = await PDFDocument.load(require('fs').readFileSync('smoke.booklet.pdf'));
+            if (doc.getPageCount() !== 4) throw new Error('expected 4 faces, got ' + doc.getPageCount());
+            const { width } = doc.getPage(0).getSize();
+            if (Math.round(width) !== 792) throw new Error('expected letter-landscape faces');
+            console.log('CLI smoke OK: 4 letter-landscape faces');
+          })();
+          "
