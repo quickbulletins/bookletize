@@ -23,6 +23,11 @@ describe("parseArgs", () => {
     expect(parsed.foldGuides).toBe(false);
   });
 
+  test("accepts the A-series sheets", () => {
+    expect(parseArgs(["booklet", "in.pdf", "--sheet", "a4-landscape"]).sheet).toBe("a4-landscape");
+    expect(parseArgs(["booklet", "in.pdf", "--sheet", "a3-landscape"]).sheet).toBe("a3-landscape");
+  });
+
   test("rejects unknown commands, missing input, unknown flags, bad sheets", () => {
     expect(() => parseArgs([])).toThrow(/usage/i);
     expect(() => parseArgs(["staple", "in.pdf"])).toThrow(/unknown command/i);
