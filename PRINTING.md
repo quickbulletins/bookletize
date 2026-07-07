@@ -5,6 +5,8 @@ back of sheet 1, front of sheet 2, back of sheet 2, … Your printer's job is to
 put each "back" face on the reverse of its "front" face, oriented so nothing
 comes out upside down. Three settings do all the work:
 
+(Printing with bleed? See **Trim workflow** at the end of this file.)
+
 ## 1. Duplex: flip on SHORT edge
 
 Booklet sheets are landscape, so the fold axis is vertical. When the printer
@@ -49,3 +51,14 @@ Before a real run, print one booklet from this repo's arithmetic and fold it:
 if pages read in order, your printer's duplex path is verified for every
 future run. This library's letter-size layouts were verified exactly this way
 on physical duplex printers before v0.1 shipped.
+
+## Trim workflow (crop marks + bleed)
+
+Export your pages at finished size **plus bleed** (typically 1/8" = 9 pt on
+every side), impose with `--bleed 9 --crop-marks` onto oversized stock
+(`tabloid-landscape` for half-letter, `a3-landscape` for A5), print duplex
+flip-on-short-edge as always, fold, then cut at the marks. The spine has no
+marks on purpose — it is folded, never cut. Fold guides and crop marks
+coexist: the grey dashed spine ticks sit in the top/bottom waste and help
+register the fold before the cut. If bookletize says the sheet is too small
+for trim + bleed, it means exactly that: pick larger stock.
