@@ -283,6 +283,15 @@ describe("imposeTwoUpPdf", () => {
     await expect(imposeTwoUpPdf(doc)).rejects.toThrow(/share one size/);
   });
 
+  test("accepts float-dust size differences (loaded-doc tolerance)", async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage([612, 792]).drawRectangle({ x: 1, y: 1, width: 5, height: 5 });
+    doc.addPage([612, 792 + 1e-9]).drawRectangle({ x: 1, y: 1, width: 5, height: 5 });
+    const out = await imposeTwoUpPdf(doc);
+    expect(out.getPageCount()).toBe(2);
+    expect(out.getPage(0).getSize().height).toBeCloseTo(1584);
+  });
+
   test("rejects an empty document", async () => {
     const doc = await PDFDocument.create();
     await expect(imposeTwoUpPdf(doc)).rejects.toThrow(/no pages/);

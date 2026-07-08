@@ -56,20 +56,20 @@ const GUIDE_COLOR = rgb(0.62, 0.62, 0.62);
 const MARK_COLOR = rgb(0, 0, 0);
 
 /**
- * Embed the logical pages into `out`, index-aligned with the source.
+ * Embed a document's pages into `out`, index-aligned with the source.
  * Pages with no content stream (possible in hand-built PDFs; Chromium always
  * emits one) cannot be embedded by pdf-lib — they map to null and render as
  * blank slots instead of crashing at save time.
  */
-async function embedLogical(
+async function embedPages(
   out: PDFDocument,
-  logical: PDFDocument,
+  source: PDFDocument,
 ): Promise<Array<PDFEmbeddedPage | null>> {
-  const pages = logical.getPages();
-  const embeddableIndices = logical
+  const pages = source.getPages();
+  const embeddableIndices = source
     .getPageIndices()
     .filter((i) => pages[i]!.node.Contents() !== undefined);
-  const embedded = await out.embedPdf(logical, embeddableIndices);
+  const embedded = await out.embedPdf(source, embeddableIndices);
 
   const byLogicalIndex: Array<PDFEmbeddedPage | null> = pages.map(() => null);
   embeddableIndices.forEach((logicalIndex, embeddedIndex) => {
@@ -269,7 +269,7 @@ export async function imposeSaddlePdf(
 ): Promise<PDFDocument> {
   const mapping = imposeSaddle(logical.getPageCount());
   const out = await PDFDocument.create();
-  const embedded = await embedLogical(out, logical);
+  const embedded = await embedPages(out, logical);
   const slotWidths = [sheet.width / 2, sheet.width / 2];
   const bleedMode: BleedMode | undefined =
     opts.bleed !== undefined || opts.cropMarks === true
@@ -321,7 +321,7 @@ export interface ApplySaddleOptions extends SaddleOptions {
   sheet?: SheetName | SheetSpec;
   /** Step-and-repeat: stack two copies of every face on a double-height
    *  sheet (cut once at the midline → two identical booklets). NOTE: the
-   *  stacked output duplexes FLIP ON LONG EDGE. */
+   *  stacked output duplexes FLIP ON LONG EDGE (PRINTING.md). */
   twoUp?: boolean;
 }
 
@@ -336,6 +336,8 @@ export async function applySaddle(
     bleed: opts.bleed,
     cropMarks: opts.cropMarks,
   });
+  // At this API cut ticks follow foldGuides; independent control lives at
+  // the imposeTwoUpPdf/imposeSaddlePdf layer.
   const out = opts.twoUp
     ? await imposeTwoUpPdf(imposed, { cutGuides: opts.foldGuides !== false })
     : imposed;
@@ -364,7 +366,7 @@ export async function imposeTrifoldPdf(logical: PDFDocument): Promise<PDFDocumen
   ];
 
   const out = await PDFDocument.create();
-  const embedded = await embedLogical(out, logical);
+  const embedded = await embedPages(out, logical);
 
   for (const { slots, widths } of faces) {
     const face = drawFace(out, sheet, embedded, slots, widths);
@@ -426,7 +428,7 @@ export async function imposeTwoUpPdf(
   }
 
   const out = await PDFDocument.create();
-  const embedded = await embedLogical(out, imposed);
+  const embedded = await embedPages(out, imposed);
 
   for (let i = 0; i < faces.length; i++) {
     const big = out.addPage([width, height * 2]);
